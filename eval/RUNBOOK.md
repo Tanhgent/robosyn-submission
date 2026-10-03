@@ -8,17 +8,20 @@ Common first step on any fresh pod:
 apt-get update && apt-get install -y libusb-1.0-0 ffmpeg git   # without apt-get update, installs 404
 ```
 
-> **Mirror note.** Direct `files.pythonhosted.org` access is blocked from some pods. Use `--index-url https://mirrors.aliyun.com/pypi/simple` plus `--timeout 60 --retries 3` on every long `pip install` (we observed indefinite hangs on the tuna mirror), and run long installs under `nohup` — web-terminal disconnects kill foreground jobs.
+> **Mirror note.** Direct `files.pythonhosted.org` access is blocked from some pods. Use `--index-url https://mirrors.aliyun.com/pypi/simple` plus `--timeout 60 --retries 3` on every long `pip install` (we observed indefinite hangs on the tuna mirror), and run every long job (`pip`, `tar`, evaluation chains) under `nohup` — web-terminal disconnects kill foreground jobs.
 
 ---
 
 ## Recipe A — ACT evaluation (frozen environment)
 
 1. `conda create -n robosyn python=3.11 -y && conda activate robosyn`
-2. **Fast path (recommended, ~10 min):** restore the prebuilt env tarball instead of pip:
+2. **Fast path (recommended, ~15 min end-to-end; validated 2026-10-04):** restore the prebuilt env tarball instead of pip, then still do the two `git clone`s from step 3 (the env's editable installs point at `/workspace/EmbodiChain` and `/workspace/RoboSynChallenge`, so the sources must exist at those exact paths — but no `pip install` is needed):
    ```bash
-   # robosyn_env_x86.tar.gz (4.8 GB) from HF dataset Beeny0814/robosyn-eval-artifacts
-   cd /root/miniconda3/envs && rm -rf robosyn && tar -xzf /path/to/robosyn_env_x86.tar.gz
+   # robosyn_env_x86.tar.gz (4.8 GB) from HF dataset Beeny0814/robosyn-eval-artifacts (public as of submission)
+   # note: this env ships no `hf` CLI — if the dataset is still private, log in via Python:
+   #   python -c "from huggingface_hub import login; login('<token>')"
+   cd /root/miniconda3/envs && rm -rf robosyn && nohup tar -xzf /path/to/robosyn_env_x86.tar.gz > /tmp/untar.log 2>&1 &
+   # extraction ~3 min; verify: du -sh robosyn → ~12G and `ps aux | grep tar` empty, then conda activate robosyn
    ```
 3. **From-scratch path:** install the frozen requirements `frozen_robosyn_pod_2026-09-22.txt` (same HF dataset; 271 pinned packages — replace the local cudnn wheel line with `nvidia-cudnn-cu12==9.5.1.17`), then:
    ```bash
@@ -27,7 +30,7 @@ apt-get update && apt-get install -y libusb-1.0-0 ffmpeg git   # without apt-get
    cd EmbodiChain && pip install -e . --no-deps && cd ../RoboSynChallenge && pip install -e . --no-deps
    pip install --no-deps "lerobot @ git+https://github.com/huggingface/lerobot@b883328e6c95681ca90a18b102e4ae5e1f91e2bf"
    ```
-4. Verify: `python -c "import lerobot, torch, embodichain; print(lerobot.__version__, torch.__version__)"` → `0.3.3 2.7.1+cu126`
+4. Verify: `python -c "import lerobot, torch, embodichain, dexsim; print(lerobot.__version__, torch.__version__)"` → `0.3.3 2.7.1+cu126`
 5. Evaluate (per task):
    ```bash
    cd /workspace/RoboSynChallenge/policy/act
@@ -52,7 +55,7 @@ apt-get update && apt-get install -y libusb-1.0-0 ffmpeg git   # without apt-get
    export SMOLVLA_PYTHON=/root/miniconda3/envs/svla312/bin/python
    mv policy/smolvla/lerobot policy/smolvla/lerobot_unused     # auto-detect trap: if present, the repo's main-branch lerobot source shadows the installed 0.6.1
    ```
-4. Apply the two code patches from `PATCHES.md` (Bug 3: worker uint8→float; Bug 4: eval arity), and the Bug 2 tokenizer-path fix inside our checkpoint copy.
+4. Apply the two code patches from `PATCHES.md` (Bug 3: worker uint8→float; Bug 4: eval arity), and the Bug 2 tokenizer-path fix inside our checkpoint copy. Patched reference copies of both files ship in `policy_smolvla/`.
 5. Evaluate:
    ```bash
    bash policy/smolvla/eval.sh drawer_open_place random <ckpt_dir> 0 \
@@ -62,6 +65,6 @@ apt-get update && apt-get install -y libusb-1.0-0 ffmpeg git   # without apt-get
 
 ## Validation trail
 
-- Recipe A reproduced the ACT lineup numbers in `README.md` (100 ep/task) and ran the stock-AdamW ablation (2026-10-03).
+- Recipe A reproduced the ACT lineup numbers in `README.md` (100 ep/task) and ran the stock-AdamW ablation (2026-10-03); the tarball fast path was validated end-to-end on a fresh pod (2026-10-04).
 - Recipe B reproduced the organizer-released drawer checkpoint at 12/20 (screen) and our `svla_drawer_050000` at 50/100 (2026-09-28), consistent with the independent 49/100 in issue #53.
-- Known-good timing: pod setup ~40 min from scratch on a healthy connection (observed up to 2–4 h on degraded mirrors — hence the tarball fast path), ACT eval ~20 min/20 ep, SmolVLA eval ~2 min/ep.
+- Known-good timing: tarball fast path ~15 min; from-scratch setup ~40 min on a healthy connection (observed up to 2–4 h on degraded mirrors); ACT eval ~20 min/20 ep; SmolVLA eval ~2 min/ep.
