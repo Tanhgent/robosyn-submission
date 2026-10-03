@@ -19,7 +19,7 @@ All checkpoints live in one Hugging Face model repo: **`Beeny0814/robosyn-act-v1
 | sample_loading | ACT + Muon | `sample_loading/` | 40k, seed 42 |
 | drawer_open_place | **SmolVLA (ours)** | `svla_drawer_050000/` | 50k, organizer finetune defaults |
 
-All ACT training used the organizer recipe with only the optimizer swapped (`MuonAdamW`, lr 3e-4, no scheduler); `manipulate_pipette` uses its 20k checkpoint because 20k outperformed 40k for that task in our harness (45 vs 43 at 100 ep). The SmolVLA checkpoint requires the Bug 2 tokenizer-path fix from `PATCHES.md`.
+All ACT training used the organizer recipe with only the optimizer swapped (`MuonAdamW`, lr 3e-4, no scheduler); `manipulate_pipette` uses its 20k checkpoint because 20k outperformed 40k for that task in our harness (45 vs 43 at 100 ep). Note: the 20k checkpoint is the `020000` snapshot of the same 40k run (save_freq 10k), so its `train_config.json` shows the run setting `steps: 40000` — the snapshot step is 20k (its weights differ from the 40k folder's; distinct LFS sha256). The SmolVLA checkpoint requires the Bug 2 tokenizer-path fix from `PATCHES.md`.
 
 ## Fallback configuration (single policy type — ACT only, macro 50.4)
 
