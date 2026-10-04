@@ -63,6 +63,13 @@ apt-get update && apt-get install -y libusb-1.0-0 ffmpeg git   # without apt-get
      --max_episodes 100 --eval_video_log true --smolvla_rescale_gripper true
    ```
 
+## Known harness quirks (long runs)
+
+Two benign-but-confusing behaviors we hit during 100-episode runs; neither invalidates results:
+
+- **Teardown segfault after a completed run.** `eval_policy.py` can segfault *after* printing the Results Summary and saving `evaluation_metrics.json` (observed once on item_assembly). The run is valid — judge completion by the presence of the Summary block / metrics file, not by the exit code.
+- **Expert-filter state corruption on very long runs.** After ~90+ episodes in one process, the expert feasibility filter can start rejecting *every* candidate seed (`expert_action_generation_failed, planned_steps=0`) until the candidate budget is exhausted (observed once on sample_loading at 93/100). Episodes completed up to that point are valid; re-run the task in a fresh process to finish.
+
 ## Validation trail
 
 - Recipe A reproduced the ACT lineup numbers in `README.md` (100 ep/task) and ran the stock-AdamW ablation (2026-10-03); the tarball fast path was validated end-to-end on a fresh pod (2026-10-04).
