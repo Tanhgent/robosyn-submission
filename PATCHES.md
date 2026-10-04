@@ -1,28 +1,32 @@
 # PATCHES — fixes required to run the organizer evaluation path
 
-ACT evaluation runs on the **unmodified** organizer code. The four patches below are needed only for the **SmolVLA** evaluation path (`policy/smolvla/`). All have been reported upstream: Bugs 3–4 were first reported in [#53](https://github.com/EDEM-AI/RoboSynChallenge/issues/53) (fix PR [#57](https://github.com/EDEM-AI/RoboSynChallenge/pull/57)); Bugs 1–2 are ours, reported with independent confirmation of #53 in [#76](https://github.com/EDEM-AI/RoboSynChallenge/issues/76). The un-pinned lerobot install that underlies the version mismatch is [#52](https://github.com/EDEM-AI/RoboSynChallenge/issues/52).
+ACT evaluation runs on the **unmodified** organizer code. The notes below concern only the **SmolVLA** evaluation path (`policy/smolvla/`). Upstream status: Bugs 3–4 were first reported in [#53](https://github.com/EDEM-AI/RoboSynChallenge/issues/53) (fix PR [#57](https://github.com/EDEM-AI/RoboSynChallenge/pull/57)); items 1–2 were reported by us in [#76](https://github.com/EDEM-AI/RoboSynChallenge/issues/76), root-caused jointly with @liyifreddy in that thread, and addressed by the organizers in PR [#77](https://github.com/EDEM-AI/RoboSynChallenge/pull/77). The un-pinned lerobot install that underlies the version gap is [#52](https://github.com/EDEM-AI/RoboSynChallenge/issues/52).
 
-Apply order matters: without Bug 1's fix, the process dies silently (exit 0, no traceback) before any of the other errors can even surface.
+Without item 1's workaround on affected checkouts, failures are silent (exit 0, no traceback) and none of the other errors ever surface.
 
 ---
 
-## Bug 1 — worker stdout pipe buffering (silent death)
+## Item 1 — silent failures: buffered stdout discarded by simulator shutdown
 
-**Symptom.** `eval.sh` exits 0 after model load; no traceback, no metrics file. The parent (`deploy_policy.py`) blocks forever on `readline` because the worker's JSON replies sit in the stdout pipe buffer.
+**Symptom.** `eval.sh` exits 0 after model load; no traceback, no metrics file.
 
-**Fix (workaround used here).** Export before launching:
+**Root cause (corrected in #76 — not a worker flush bug).** When the worker dies during load (e.g. from item 2), the parent raises, `eval_policy.py` closes the env, and `SimulationManager.destroy()` calls `os._exit(0)` ([#54](https://github.com/EDEM-AI/RoboSynChallenge/issues/54)) — discarding whatever the main process still has buffered on stdout, including the real traceback. `policy/smolvla/eval.sh` sets `EMBODICHAIN_SIM_EXIT_PROCESS=0` since [#56](https://github.com/EDEM-AI/RoboSynChallenge/pull/56) (commit `8eb3b5f`, Sep 28); our silent-death observations were all on checkouts cloned before that.
+
+**Workaround (still useful).** On pre-#56 checkouts, or when invoking `scripts/eval_policy.py` directly:
 
 ```bash
 export PYTHONUNBUFFERED=1
 ```
 
-**Proper fix.** Flush after each JSON reply in `smolvla_worker.py`, or set `PYTHONUNBUFFERED=1` in the `worker_env` dict in `deploy_policy.py`.
+This drains the parent's buffer before `os._exit`, so errors surface. PR #77 additionally sets `PYTHONUNBUFFERED=1` in the worker subprocess env.
 
-## Bug 2 — tokenizer relative path (checkpoints from recent lerobot)
+## Item 2 — tokenizer relative path (lerobot version gap)
 
-**Symptom.** `RepositoryNotFoundError: 'tokenizer'` at load time. Checkpoints trained on recent lerobot store `"tokenizer_name": "tokenizer"` in `policy_preprocessor.json`; lerobot 0.6.1 resolves this against the **CWD**, not the checkpoint directory.
+**Symptom.** `RepositoryNotFoundError: 'tokenizer'` at load time for checkpoints trained on recent lerobot, which store `"tokenizer_name": "tokenizer"` in `policy_preprocessor.json`.
 
-**Fix.** Rewrite the value to an absolute path inside the checkpoint copy, e.g.:
+**Root cause (refined in #76).** A lerobot **version gap**, not a checkpoint defect: lerobot main (`713a409f`) resolves processor artifact paths against the checkpoint directory (`_resolve_artifact_paths` in `processor/pipeline.py`); the released `lerobot==0.6.1` — what `pip install "lerobot[smolvla]"` resolves to — does not yet. Pinning lerobot for SmolVLA (#52) covers it; PR #77 instead changes CWD to the checkpoint dir around loading.
+
+**Workaround for released 0.6.x (what we use).** Rewrite the value to an absolute path inside the checkpoint copy:
 
 ```python
 import json
@@ -42,7 +46,7 @@ fix(s)
 json.dump(s, open(p, "w"), indent=2)
 ```
 
-(Needed for our own `svla_drawer_050000`; the organizer-released checkpoints load without it.)
+(Needed for our own `svla_drawer_050000` under 0.6.1; the organizer-released checkpoints load without it.)
 
 ## Bug 3 — uint8 images reach the SmolVLA preprocessor (crash on first inference)
 
