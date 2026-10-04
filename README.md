@@ -34,12 +34,20 @@ All numbers: success rate over **100 episodes**, `random` layout, organizer `eva
 
 ### Honesty footnote: cross-harness calibration
 
-Local scores and leaderboard scores come from **different harnesses and are not directly comparable**. We measured the translation empirically by running organizer-released checkpoints in our harness:
+Local scores and leaderboard scores come from **different harnesses and are not directly comparable**. We measured the translation empirically by running organizer-released checkpoints in our harness (four probe points):
 
-- Official ACT `click_bell`: published **37** ↔ our harness **75** (+38pp — our protocol filters physically infeasible seeds via the expert planner).
-- Official SmolVLA `drawer_open_place`: published **62** ↔ our harness **60** (20 ep screen) and **49–50/100** at 100 ep (ours: 50/100; independently 49/100 by another participant, [#53](https://github.com/EDEM-AI/RoboSynChallenge/issues/53)) — i.e. the leaderboard figure is not reproducible with the public adapter.
+| Official checkpoint | Published | Our harness | Δ |
+|---|---|---|---|
+| ACT `click_bell` | 37 | 75 (20 ep) | +38 |
+| ACT `item_assembly` | 64 | 75 (20 ep) | +11 |
+| ACT `manipulate_pipette` | 61 | 50 (20 ep) | −11 |
+| SmolVLA `drawer_open_place` | 62 | 60 (20 ep) / 49–50 (100 ep; ours 50, independently 49 in [#53](https://github.com/EDEM-AI/RoboSynChallenge/issues/53)) | ≈0 to −13 |
 
-The translation factor varies per task and model, so **every decision in this work (optimizer choice, per-task policy choice) was made from same-harness comparisons only.** Local macro values should not be read as leaderboard predictions.
+The translation factor varies per task, model, and direction — there is no fixed conversion — so **every decision in this work (optimizer choice, per-task policy choice) was made from same-harness comparisons only**, and local macro values should not be read as leaderboard predictions.
+
+Two same-harness consequences of the probes: our `manipulate_pipette` (45) is statistically on par with the official checkpoint (50 at n=20) — the published −16 gap is a harness artifact, not a weakness; our `item_assembly` (34) genuinely trails the official checkpoint (75) by a wide margin, indicating the organizer's assembly training used something beyond the published recipe defaults.
+
+**Reproduction check (2026-10-05).** The full ACT lineup was independently re-measured at 100 ep/task on a fresh pod built from this repo's `eval/RUNBOOK.md`: 9-task macro 55.9 → 56.6 (+0.7pp), all per-task swings within two-run binomial noise. The numbers in the tables above are the original September confirmations (the measurements the decisions were made on).
 
 ## Method
 
