@@ -68,7 +68,7 @@ apt-get update && apt-get install -y libusb-1.0-0 ffmpeg git   # without apt-get
 Two benign-but-confusing behaviors we hit during 100-episode runs; neither invalidates results:
 
 - **Teardown segfault after a completed run.** `eval_policy.py` can segfault *after* printing the Results Summary and saving `evaluation_metrics.json` (observed once on item_assembly). The run is valid — judge completion by the presence of the Summary block / metrics file, not by the exit code.
-- **Expert-filter state corruption on very long runs.** After ~90+ episodes in one process, the expert feasibility filter can start rejecting *every* candidate seed (`expert_action_generation_failed, planned_steps=0`) until the candidate budget is exhausted (observed once on sample_loading at 93/100). Episodes completed up to that point are valid; re-run the task in a fresh process to finish.
+- **Deterministic infeasible-seed stretch (observed on sample_loading).** The candidate seed sequence is fixed, and for sample_loading the expert planner rejects every one of the default 100 candidates for policy episode 94 (`expert_action_generation_failed, planned_steps=0`) — reproducibly, in two independent runs, so this is not state corruption from a long run. The eval then aborts with `Could not find an expert-feasible seed`. Fix (validated): raise the candidate budget, e.g. `--eval_max_seed_attempts_per_episodes 500`, which completed 100/100. Episodes finished before such an abort are valid.
 
 ## Validation trail
 
