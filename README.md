@@ -73,7 +73,7 @@ Two same-harness consequences of the probes: our `manipulate_pipette` (45) is st
 README.md             - this file
 PATCHES.md            - organizer-code fixes with diffs and issue links
 MODELS.md             - checkpoint registry (HF links, per-task mapping, both configurations)
-policy/          - deployment folders in the organizer harness format (stock ACT verbatim; patched SmolVLA) — point of entry for evaluation
+policy/               - deployment folders in the organizer harness format (stock ACT verbatim; patched SmolVLA) — point of entry for evaluation
 policy_act/           - Muon wrapper, muon_lite.py, stock-AdamW twin, 10-task chain scripts
 policy_smolvla/       - drawer training command record + eval patches (worker dtype, arity)
 eval/RUNBOOK.md       - pod environment recipe (freeze + official-stack variants), eval commands
