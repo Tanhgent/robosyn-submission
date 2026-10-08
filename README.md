@@ -12,7 +12,7 @@ Per-task checkpoints for all 10 tasks. The core contribution is **optimizer-leve
 | ACT+Muon ×10 (fallback, single policy type) | 50.4% |
 | ACT + stock AdamW ×10 (ablation baseline, 20 ep) | 37.5% |
 
-> **Submission configuration note.** Whether mixed policy types are allowed per task is pending an organizer answer ([#76](https://github.com/EDEM-AI/RoboSynChallenge/issues/76)). This repo ships both configurations; `MODELS.md` marks which checkpoint is active per task for each configuration.
+> **Submission configuration note.** Whether mixed policy types are allowed per task is pending an organizer answer ([#76](https://github.com/EDEM-AI/RoboSynChallenge/issues/76)). This repo ships both configurations; `MODELS.md` marks which checkpoint is active per task for each configuration. The submission portal accepts per-policy submissions, so we submit both policies accordingly.
 
 ## Per-task results (our harness)
 
